@@ -1,6 +1,6 @@
 __Support server__
 
-(Discord Vibes)[https://discord.gg/zf46prb]
+[Discord Vibes](https://discord.gg/zf46prb)
 
 __Basic Example__
 
