@@ -1,0 +1,36 @@
+{
+  "name": "discord.js-vibes",
+  "version": "1.0.0",
+  "description": "A discord.js Musicbot module",
+  "main": "vibe.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NightmareDiscord/discord.js-vibes.git"
+  },
+  "keywords": [
+    "discord.js",
+    "Discord.js",
+    "discord",
+    "Discord",
+    "music",
+    "Music",
+    "musicbot",
+    "Musicbot",
+    "youtube"
+  ],
+  "author": "Oliver James Kennewell",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/NightmareDiscord/discord.js-vibes/issues"
+  },
+  "homepage": "https://github.com/NightmareDiscord/discord.js-vibes#readme",
+  "dependencies": {
+    "discord.js": "^11.4.2",
+    "opusscript": "0.0.6",
+    "youtube-search": "^1.1.3",
+    "ytdl-core": "^0.26.3"
+  }
+}
