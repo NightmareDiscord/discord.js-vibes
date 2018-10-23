@@ -34,4 +34,4 @@ bot.login("BOT_TOKEN");
 ```
 
 __Infomation__
-This module is my first. For getting options and queue i got some of the code from telk-music. 
+This module is my first. For getting options and queue i got some of the code from telk-music and discord.js-musicbot-addon. The rest of the code is from me.
