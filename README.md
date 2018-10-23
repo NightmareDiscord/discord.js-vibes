@@ -1,8 +1,8 @@
-#Support server
+__Support server__
 
 (Discord Vibes)[https://discord.gg/zf46prb]
 
-#Basic Example
+__Basic Example__
 
 ```javascript
 const Discord = require("discord.js");
@@ -17,7 +17,7 @@ Music.start(bot, {
 bot.login("BOT_TOKEN");
 ```
 
-#Full Example
+__Full Example__
 ```javascript
 const Discord = require("discord.js");
 const Music = require("discord.js-vibes");
