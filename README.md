@@ -18,6 +18,7 @@ bot.login("BOT_TOKEN");
 ```
 
 __Full Example__
+
 ```javascript
 const Discord = require("discord.js");
 const Music = require("discord.js-vibes");
@@ -34,4 +35,5 @@ bot.login("BOT_TOKEN");
 ```
 
 __Infomation__
+
 This module is my first. For getting options and queue i got some of the code from telk-music and discord.js-musicbot-addon. The rest of the code is from me.
