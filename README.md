@@ -2,6 +2,16 @@ __Support server__
 
 [Discord Vibes](https://discord.gg/zf46prb)
 
+__Commands__
+
+play {Search String} | Plays the song selected.
+pause | Pauses the playing song.
+resume | Resumes the paused song.
+leave | Leaves the channel the bot is on.
+skip | Skips the playing song.
+queue | Shows you all songs in the queue.
+loop | Enables or disables song repeat.
+
 __Basic Example__
 
 ```javascript

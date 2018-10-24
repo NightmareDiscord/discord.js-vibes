@@ -119,6 +119,10 @@ exports.start = (bot, options) => {
         if(cmd === "loop") {
           loopCMD(message, args);
         }
+
+        if(cmd === "volume") {
+          volumeCMD(message, args);
+        }
         
     });
 
@@ -131,6 +135,7 @@ exports.start = (bot, options) => {
             songNames: [],
             songRequesters: [],
             loop: 0,
+            volume: 0
           };
 
           return queue[guild];
@@ -143,6 +148,9 @@ exports.start = (bot, options) => {
 
          //Set the volume
          server.dispatcher.setVolume(parseInt(200 / 100));
+
+         //Set the volume in the server array
+         server.volume=200
          
          server.dispatcher.on("end", async function() {
 
@@ -286,6 +294,9 @@ exports.start = (bot, options) => {
         //Get the dispatcher
         let dispatcher = message.guild.me.voiceChannel.connection.player.dispatcher;
 
+        //Check if the dispatcher is paused.
+        if(dispatcher.paused) return message.channel.send("❌ | Sorry. Please resume the current song to skip it.");
+
         //Turn loop off
         server.loop=0
 
@@ -324,17 +335,66 @@ exports.start = (bot, options) => {
 
         if(server.loop === 0) {
           
+          //Enable the loop
           server.loop=1
 
           message.channel.send("🔂 | Success. Loop is now **enabled**.");
 
         } else if(server.loop === 1) {
 
+          //Disable
           server.loop=0
 
           message.channel.send("▶ | Success. Loop is now **disabled**.");
 
         }
+      }
+
+      async function volumeCMD(message, args) {
+
+            //Get the servers queue
+            let server = await getQueue(message.guild.id);
+
+            if(!server.queue[0]) return message.channel.send("❌ | Sorry. Nothing is playing at the moment.");
+
+            //Check if a volume is specified
+            if(!args[0]) return message.channel.send(`❌ | Sorry. Please specify a volume between 1 - ${music.maxVolume} or use **${music.botPrefix}volume current** for the current volume.`);
+
+            let opt = args[0].toLowerCase();
+            if(opt === "current") {
+
+              let embed = new Discord.RichEmbed()
+              .setColor(music.embedColor)
+              .setTitle("Current Volume")
+              .setThumbnail(message.guild.iconURL)
+              .setDescription("**Current Volume**: " + server.volume)
+              message.channel.send(embed);
+
+            return;
+            } else {
+
+            //Check if the Volume mentions is a number
+            if(isNaN(args[0])) return message.channel.send("❌ | Sorry. The volume specified is Not a Number.");
+
+            //Check some things
+            if(args[0] > music.maxVolume) return message.channel.send("❌ | Sorry. The volume specified is bigger than the max queue size.");
+            if(args[0] < 1) return message.channel.send("❌ | Sorry. The volume specified is smaller than 1.");
+
+            //Get the dispatcher
+            let dispatcher = message.guild.me.voiceChannel.connection.player.dispatcher;
+
+            //Set the volume
+            dispatcher.setVolume(parseInt(args[0] / 100));
+
+            //Set volume in the server array
+            server.volume=args[0];
+
+            //Send the confirmation
+            message.channel.send("⏫ | Success. I have turned the volume to " + server.volume + ".");
+            }
+
+
+            
 
       }
 
