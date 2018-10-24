@@ -5,12 +5,20 @@ __Support server__
 __Commands__
 
 play {Search String} | Plays the song selected.
+
 pause | Pauses the playing song.
+
 resume | Resumes the paused song.
+
 leave | Leaves the channel the bot is on.
+
 skip | Skips the playing song.
+
 queue | Shows you all songs in the queue.
+
 loop | Enables or disables song repeat.
+
+volume {Number || current} | Shows you the current volume or changes the volume depending on what you type.
 
 __Basic Example__
 
@@ -36,9 +44,10 @@ const Music = require("discord.js-vibes");
 let bot = new Discord.Client();
 
 Music.start(bot, {
-    youtubeAPIKey: 'YOUTUBE_API_KEY'
-    prefix: 'BOT_PREFIX' //Default if '!'
-    embedColor: 'EMBED_COLOR' //Use a HTML color code
+    youtubeAPIKey: 'YOUTUBE_API_KEY',
+    prefix: 'BOT_PREFIX', //Default if '!'
+    embedColor: 'EMBED_COLOR', //Use a HTML color code
+    maxVolume: 200 //Default 200 
   });
 
 bot.login("BOT_TOKEN");
