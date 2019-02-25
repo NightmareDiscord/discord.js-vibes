@@ -16,7 +16,7 @@ skip | Skips the playing song.
 
 queue | Shows you all songs in the queue.
 
-loop | Enables or disables song repeat.
+repeat | Enables or disables song repeat.
 
 volume {Number || current} | Shows you the current volume or changes the volume depending on what you type.
 
@@ -47,12 +47,9 @@ Music.start(bot, {
     youtubeAPIKey: 'YOUTUBE_API_KEY',
     prefix: 'BOT_PREFIX', //Default if '!'
     embedColor: 'EMBED_COLOR', //Use a HTML color code
-    maxVolume: 200 //Default 200 
+    maxVolume: 200, //Default 200 
+    botLogging: true, //Set this to false if you don't want console logging.
   });
 
 bot.login("BOT_TOKEN");
 ```
-
-__Infomation__
-
-This module is my first. For getting options and queue i got some of the code from telk-music and discord.js-musicbot-addon. The rest of the code is from me.

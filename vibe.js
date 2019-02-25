@@ -1,52 +1,36 @@
 /*
 MIT License
 
-
-
-Copyright (c) 2018 Oliver James Kennewell (NightmareDiscord)
-
-
+Copyright (c) 2019 Oliver James Kennewell
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-
 of this software and associated documentation files (the "Software"), to deal
-
 in the Software without restriction, including without limitation the rights
-
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-
 copies of the Software, and to permit persons to whom the Software is
-
 furnished to do so, subject to the following conditions:
 
-
-
 The above copyright notice and this permission notice shall be included in all
-
 copies or substantial portions of the Software.
 
-
-
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-
 SOFTWARE.
 */
 
-//Require packages
+//Constants
 const Discord = require("discord.js");
-const ytdl = require("ytdl-core");
 const search = require("youtube-search");
+const ytdl = require("ytdl-core");
+const ytpl = require("ytpl");
 const PACKAGE = require("./package.json");
+
+//Variables
+let queue = {};
 
 /*
 
@@ -59,345 +43,467 @@ const PACKAGE = require("./package.json");
 //Start the module
 exports.start = (bot, options) => {
 
-    //Get the Music class
+    //Music class
     class Music {
-  
-      constructor(bot, options) {
-  
-        this.youtubeAPIKey = (options && options.youtubeAPIKey);
-  
-        this.botPrefix = (options && options.prefix) || '!';
-  
-        this.embedColor = (options && options.embedColor) || 'RED';
-  
-        this.maxQueueSize = parseInt((options && options.maxQueueSize) || 50);
 
-        this.maxVolume = parseInt((options && options.maxVolume) || 200);
-      }
-  
+        //Options
+        constructor (bot, options) {
+
+            this.youtubeAPIKey = (options && options.youtubeAPIKey);
+
+            this.botPrefix = (options && options.botPrefix) || "!";
+            
+            this.embedColor = (options && options.embedColor) || "#287aff";
+
+            this.maxVolume = parseInt((options && options.maxVolume) || 200);
+
+            this.botLogging = (options && typeof options.botLogging !== 'undefined' ? options && options.botLogging : true);
+        
+            this.largeImage = (options && typeof options.largeImage !== 'undefined' ? options && options.largeImage : false)  
+
+        }
+
     }
-  
-  
-  
-    var music = new Music(bot, options);
-  
+
+    //Export music class
+    let music = new Music(bot, options);
     exports.bot = music;
+
+    //Ready event
+    bot.on("ready", () => {
+
+        //If bot logging is true 
+        if(music.botLogging === true) {
+
+            //Log infomation
+            console.log(`[MUSIC] Music initialized.`);
+
+
+        }
+
+    });
 
     //Message event
     bot.on("message", async message => {
 
         //Variables
-        let args = message.content.slice(music.botPrefix.length).trim().split(" ");
+        let args = message.content.slice(music.botPrefix.length).trim().split(/ +/g);
         let cmd = args.shift().toLowerCase();
 
-         if(!message.content.startsWith(music.botPrefix)) return;
+      //If there isn't a queue already
+      if (!queue[message.guild.id]) queue[message.guild.id] = {
+        queue: [],
+        songNames: [],
+        songRequesters: [],
+        loop: false,
+        volume: 0
+      };
 
-         if(cmd === "play") {
-           playCMD(message, args)
-         }
+        //If the message doesn't start with the prefix
+        if(!message.content.startsWith(music.botPrefix)) return;
 
-         if(cmd === "pause") {
-          pauseCMD(message, args)
-        }
-
-        if(cmd === "resume") {
-          resumeCMD(message, args);
-        }
-
-        if(cmd === "leave") {
-          leaveCMD(message, args);
-        }
-
-        if(cmd === "skip") {
-          skipCMD(message, args);
-        }
-
-        if(cmd === "queue") {
-          queueCMD(message, args);
-        }
-
-        if(cmd === "loop") {
-          loopCMD(message, args);
-        }
-
-        if(cmd === "volume") {
-          volumeCMD(message, args);
-        }
+        //If the author is a bot
+        if(message.author.bot) return;
         
+        //Commands
+        if(cmd === "play") {
+            playCMD(message, args)
+          }
+ 
+          if(cmd === "pause") {
+           pauseCMD(message, args)
+         }
+ 
+         if(cmd === "resume") {
+           resumeCMD(message, args);
+         }
+ 
+         if(cmd === "leave") {
+           leaveCMD(message, args);
+         }
+ 
+         if(cmd === "skip") {
+           skipCMD(message, args);
+         }
+ 
+         if(cmd === "queue") {
+           queueCMD(message, args);
+         }
+ 
+         if(cmd === "repeat") {
+           repeatCMD(message, args);
+         }
+ 
+         if(cmd === "volume") {
+           volumeCMD(message, args);
+         }
+ 
     });
 
-        let queue = {}
+    //Dispatcher function
+    async function dispatcher(connection, message) {
 
-        async function getQueue(guild) {
+        //Get the server
+        let server = queue [message.guild.id];
 
-          if (!queue[guild]) queue[guild] = {
-            queue: [],
-            songNames: [],
-            songRequesters: [],
-            loop: 0,
-            volume: 0
-          };
+        //Start the queue
+        server.dispatcher = connection.playStream(ytdl(server.queue[0], {filter: "audioonly"}));
 
-          return queue[guild];
+        //Set the volume
+        server.dispatcher.setVolume(parseInt(100 / 100));
+        server.volume=100;
 
-        }
+        //End event
+        server.dispatcher.on("end", async function() {
 
-         async function play(message, connection, server) {
+            //If the repeat is disabled
+            if(server.loop === false) {
 
-         server.dispatcher = connection.playStream(ytdl(server.queue[0], {filter: 'audioonly'}));
+              //Return the arrays
+              await server.queue.shift();
+              await server.songNames.shift();
+              await server.songRequesters.shift();
 
-         //Set the volume
-         server.dispatcher.setVolume(parseInt(200 / 100));
+            };
 
-         //Set the volume in the server array
-         server.volume=200
-         
-         server.dispatcher.on("end", async function() {
+            //If theres another song
+            if(server.queue[0]) {
 
-         //If loop is of
-         if(server.loop === 0) {
-             //Get rid of the just played song
-             server.queue.shift();
-             server.songRequesters.shift();
-             server.songNames.shift();
-         }
+              //Repeat the function
+              dispatcher(connection, message);
 
-         //If there is another song
-         if(server.queue[0]) {
-         play(message, connection, server);
+              //If repeat is enabled
+              if(server.loop === true) return;
 
-          if(server.loop === 1) return;
-          let id = await ytdl.getVideoID(server.queue[0]);
-            let embed = new Discord.RichEmbed()
+              //Get the ID of the video
+              let id = await ytdl.getVideoID(server.queue[0]);
+
+              //Send the now playing
+              let nowPlaying = new Discord.RichEmbed()
+              .setColor(music.embedColor)
+              .setTitle(`**Now Playing**: ${server.songNames[0]}`)
+              .setURL(server.queue[0])
+              .addField("Requester:", server.songRequesters[0], true)
+              .addField("Volume:", server.volume, true)
+              if(music.largeImage === true) nowPlaying.setImage(`https://img.youtube.com/vi/${id}/maxresdefault.jpg`);
+              if(music.largeImage === false) nowPlaying.setThumbnail(`https://img.youtube.com/vi/${id}/maxresdefault.jpg`);
+              message.channel.send(nowPlaying);
+
+            }
+
+            //If there is no songs left
+            if(!server.queue[0]) {
+
+              //Leave the channel
+              message.guild.me.voiceChannel.leave();
+
+              //Send the message
+              message.channel.send("🎵 | Playback finished.");
+
+            }
+
+        });
+
+    }
+
+    async function playCMD(message, args) {
+
+      //If the user is not in a voice channel
+      if(!message.member.voiceChannel) return message.channel.send("⛔ | You need to be in a voice channel to use this command.");
+
+      //If the songs name isn't specified
+      if(!args.join(" ")) return message.channel.send("⛔ | Please specify what song you want playing.");
+
+      //If a URL is given
+      let string = args.join(" ");
+
+      //Check for '&' and split them
+      if(string.includes("https://youtu.be/") || string.includes("https://www.youtube.com/") && string.includes("&")) string = string.split("&")[1];
+
+      //If it's a playlist link
+      if(string.includes("list=")) {
+
+          //Get the playlist ID
+          let playlistID = string.toString().split("list=")[1];
+
+          //If the playlist ID includes a '?'
+          if(playlistID.includes("?")) playlistID = playlistID.split("?")[0];
+        
+          //If the playlist ID includes a '&t='
+          if(playlistID.includes("&t=")) playlistID = playlistID.split("&t=")[0];
+
+          //Get the playlist items
+          ytpl(playlistID, async function(err, playlist) {
+
+            //If there is an error
+            if(err) message.channel.send("⛔ | Somthing went wrong getting that playlist.");
+
+            //Get the server queue
+            let server = queue[message.guild.id];
+
+            //Push the information to the arrays
+            playlist.items.forEach((song) => {
+
+              //Push to the arrays
+              server.queue.push(song.url_simple);
+              server.songNames.push(song.title);
+              server.songRequesters.push(message.author.tag);
+
+            });
+
+            //If the bot isn't playing in a channel
+            if(!message.guild.voiceConnection) await message.member.voiceChannel.join().then(function(connection) {
+               
+              //Run the dispatcher function
+               dispatcher(connection, message);
+
+            });
+
+          //Send the added to queue
+          let addedToQueue = new Discord.RichEmbed()
             .setColor(music.embedColor)
-            .setTitle("Now Playing")
-            .setDescription(`**Now Playing**: ${server.songNames[0]}.\n**Song Requester**: ${server.songRequesters[0]}.`)
-            .setThumbnail(`https://img.youtube.com/vi/${id}/maxresdefault.jpg`)
-            message.channel.send(embed)
-         } 
-         if(!server.queue[0]) {
-                    //If there isn't 
-                   connection.disconnect();
-                    message.channel.send("💨 | Queue is empty.");
-         }
-         
-         });
-       }
+            .setTitle(`**Added to queue**: ${playlist.title}`)
+            .setURL(playlist.url)
+            .addField("Requester:", message.author.tag, true)
+            if(music.largeImage === true) addedToQueue.setImage(playlist.items[0].thumbnail);
+            if(music.largeImage === false) addedToQueue.setThumbnail(playlist.items[0].thumbnail);
+          message.channel.send(addedToQueue);
 
-      async function playCMD(message, args) {
 
-        const server = await getQueue(message.guild.id);
-             
-        //Check if the member is in a voice channel
-      if(!message.member.voiceChannel) return message.channel.send("❌ | Please join a Voice Channel.");
 
-      //Check if a song is mentioned
-      if(!args.join(" ")) return message.channel.send("❌ | Please specify a Search String or a URL.");
+          });
 
-      //Check if they have reached the max queue limit
-      if(server.queue === music.maxQueueSize) return message.channel.send("❌ | Sorry. You have reached the max queue size.");
+      }
+
+      //If it isn't a playlist
 
       //Get the search options
       var opts = {
-          maxResults: 1,
-          key: music.youtubeAPIKey
-        };
+        maxResults: 1,
+        key: music.youtubeAPIKey
+      };
 
+      search(args.join(" "), opts, async function(err, results) {
         
+        //If there's an error
+        if(err) return message.channel.send("⛔ | Something went wrong getting that song.");
 
-        //Search for the song
-        search(args.join(" "), opts, async function(err, results) {
-          //Catch the error
-          if(err) message.channel.send("❌ | Sorry. There was an error searching that song.") && console.log(err);
+        //Server
+        let server = queue[message.guild.id];
+       
+        //Push to the arrays
+        server.queue.push(results[0].link);
+        server.songNames.push(results[0].title);
+        server.songRequesters.push(message.author.tag);
 
-          //The first result
-          let res = results[0];
+        //Get the video ID
+        let id = ytdl.getVideoID(results[0].link);
 
-          //Push to the queue
-          server.queue.push(res.link);
-          server.songNames.push(res.title);
-          server.songRequesters.push(message.author.tag);
+        //Send the added to queue
+        let addedToQueue = new Discord.RichEmbed()
+        .setColor(music.embedColor)
+        .setTitle(`**Added to queue**: ${results[0].title}`)
+        .setURL(results[0].link)
+        .addField("Requester:", message.author.tag, true)
+        if(music.largeImage === true) addedToQueue.setImage(`https://img.youtube.com/vi/${id}/maxresdefault.jpg`);
+        if(music.largeImage === false) addedToQueue.setThumbnail(`https://img.youtube.com/vi/${id}/maxresdefault.jpg`);
+        message.channel.send(addedToQueue);
 
-          //Send the message
-          let id = await ytdl.getVideoID(res.link)
-          let embed = new Discord.RichEmbed()
-          .setColor(music.embedColor)
-          .setTitle("Added to queue")
-          .setDescription(`**Added**: ${res.title}.\n**Requester**: ${message.author.tag}`)
-          .setThumbnail(`https://img.youtube.com/vi/${id}/maxresdefault.jpg`)
-          message.channel.send(embed);
-
-          if(!message.guild.me.voiceChannel) await message.member.voiceChannel.join().then(function(connection) {
-              play(message, connection, server);
-            });
-          
+        //If the bot isn't playing in a channel
+        if(!message.guild.voiceConnection) await message.member.voiceChannel.join().then(function(connection) {
+               
+          //Run the dispatcher function
+            dispatcher(connection, message);
+        
         });
-      }
+        
+      });
+      
+    }
 
-      async function pauseCMD(message, args) {
+    async function pauseCMD(message, args) {
 
-        //Get the server 
-        let server = await getQueue(message.guild.id);
+      //Get the queue
+      let server = queue[message.guild.id];
 
-        //Check if there is a queue
-        if(server.queue[0] === null) return message.channel.send("❌ | Sorry. Nothing is playing at the moment.");
+      //Check if there is anything playing
+      if(!server.queue[0]) return message.channel.send("⛔ | There is nothing to pause at this moment.");
 
-        //Get the dispatcher
-        let dispatcher = message.guild.me.voiceChannel.connection.player.dispatcher;
+      //Pause the song
+      server.dispatcher.pause();
 
-        //Pause the song
-        dispatcher.pause();
-  
-        message.channel.send("▶ | Success. I have paused the current song.");
+      //Send the confirmation
+      message.channel.send("⏸ | Paused.");
 
-      }
+    }
 
-      async function resumeCMD(message, args) {
+    async function resumeCMD(message, args) {
 
-        //Get the server 
-        let server = await getQueue(message.guild.id);
+      //Get the queue
+      let server = queue[message.guild.id];
 
-        //Check if there is a queue
-        if(server.queue[0] === null) return message.channel.send("❌ | Sorry. Nothing is playing at the moment.");
+      //If there is nothing in the queue 
+      if(server.dispatcher.paused === false) return message.channel.send("⛔ | There is nothing to resume at this moment.");
 
-        //Get the dispatcher
-        let dispatcher = message.guild.me.voiceChannel.connection.player.dispatcher;
+      //Resume the song
+      server.dispatcher.resume();
 
-        //Pause 
-        dispatcher.resume();
+      //Send the confirmation
+      message.channel.send("▶ | Resumed.");
 
-        message.channel.send("⏸ | Success. I have resumed the current song");
-      }
+    }
 
-      async function leaveCMD(message, args) {
+    async function leaveCMD(message, args) {
 
-        //Check if the bot is in a voice channel
-        if(!message.guild.me.voiceChannel) return message.channel.send("❌ | Sorry. I'm not in a Voice Channel.");
+      //Check if the bot is in a voice channel
+      if(!message.guild.me.voiceChannel) return message.channel.send("⛔ | Sorry. I'm not in a Voice Channel.");
 
-        //Check if the member is in the bots voice channel
-        if(message.member.voiceChannel !== message.guild.me.voiceChannel) return message.channel.send("❌ | Please join my Voice Channel.");
+      //Check if the member is in the bots voice channel
+      if(message.member.voiceChannel !== message.guild.me.voiceChannel) return message.channel.send("❌ | Please join my Voice Channel.");
 
-        //Leave the voice channel
-        message.guild.me.voiceChannel.leave();
+      //Get the server
+      let server = queue[message.guild.id];
 
-        message.channel.send("💨 | Success. I have left the Voice Channel.");
-      }
+      //Clear the queue
+      server.queue = []
 
-      async function skipCMD(message, args) {
+      //Leave the voice channel
+      message.guild.me.voiceChannel.leave();
+      
+      message.channel.send("💨 | Success. I have left the Voice Channel.");
+    }
 
-        //Get the server 
-        let server = await getQueue(message.guild.id);
+    async function skipCMD(message, args) {
 
-        //Check if there is a queue
-        if(server.queue[0] === null) return message.channel.send("❌ | Sorry. Nothing is playing at the moment.");
+      //Get the server
+      let server = queue[message.guild.id];
 
-        //Get the dispatcher
-        let dispatcher = message.guild.me.voiceChannel.connection.player.dispatcher;
+      //Check if there is a queue
+      if(!server.queue[0]) return message.channel.send("⛔ | Sorry. Nothing is playing at the moment.");
 
-        //Check if the dispatcher is paused.
-        if(dispatcher.paused) return message.channel.send("❌ | Sorry. Please resume the current song to skip it.");
+      //Turn loop off
+      server.loop=false
 
-        //Turn loop off
-        server.loop=0
+      //Pause
+       server.dispatcher.end();
 
-        //Pause 
-         dispatcher.end();
-
-        message.channel.send("⏩ | Success. I have Skipped the current song");
-      }
+      message.channel.send("⏩ | Success. I have Skipped the current song");
+    }
 
 
-      async function queueCMD(message, args) {
+    async function queueCMD(message, args) {
 
-                //Get the server 
-                let server = await getQueue(message.guild.id);
+              //Get the server
+              let server = queue[message.guild.id];
 
-                //Check if there is a queue
-                if(server.queue[0] === null) return message.channel.send("❌ | Sorry. There is nothing in the queue.");
+              //Check if there is a queue
+              if(server.queue[0] === null) return message.channel.send("⛔ | Sorry. There is nothing in the queue.");
 
-                //Send the queue
+              //JavaScript arrays
+              let names = [];
+
+              //Push the song names
+              server.songNames.forEach((song) => {
+
+                //Push to Names array
+                names.push(song);
+                
+              });
+
+              //If the queue is bigger than 10
+              if(names.length > 10) {
+
+                //Send the embed
                 let embed = new Discord.RichEmbed()
                 .setColor(music.embedColor)
-                .setTitle("Server Queue: " + message.guild.name)
+                .setTitle("Queue for: ", message.guild.name)
                 .setThumbnail(message.guild.iconURL)
-                .setDescription(server.songNames)
+                .setDescription(`**The queue is long only next 10 shown**\n\n1. ${names[0]}\n2. ${names[1]}\n3. ${names[2]}\n4. ${names[3]}\n5. ${names[4]}\n6. ${names[5]}\n7. ${names[6]}\n8. ${names[7]}\n9. ${names[8]}\n10. ${names[9]}`)
                 message.channel.send(embed);
+                
+                //Stop other code from running
+                return;
 
-      }
+              }
 
-      async function loopCMD(message, args) {
-
-        //Get the servers queue
-        let server = await getQueue(message.guild.id);
-
-        //Check if there is a queue
-        if(server.queue[0] === null) return message.channel.send("❌ | Sorry. There is nothing in the queue.");
-
-        if(server.loop === 0) {
-          
-          //Enable the loop
-          server.loop=1
-
-          message.channel.send("🔂 | Success. Loop is now **enabled**.");
-
-        } else if(server.loop === 1) {
-
-          //Disable
-          server.loop=0
-
-          message.channel.send("▶ | Success. Loop is now **disabled**.");
-
-        }
-      }
-
-      async function volumeCMD(message, args) {
-
-            //Get the servers queue
-            let server = await getQueue(message.guild.id);
-
-            if(!server.queue[0]) return message.channel.send("❌ | Sorry. Nothing is playing at the moment.");
-
-            //Check if a volume is specified
-            if(!args[0]) return message.channel.send(`❌ | Sorry. Please specify a volume between 1 - ${music.maxVolume} or use **${music.botPrefix}volume current** for the current volume.`);
-
-            let opt = args[0].toLowerCase();
-            if(opt === "current") {
-
+              //If the queue is 10 or under
               let embed = new Discord.RichEmbed()
               .setColor(music.embedColor)
-              .setTitle("Current Volume")
+              .setTitle("Queue for: ", message.guild.name)
               .setThumbnail(message.guild.iconURL)
-              .setDescription("**Current Volume**: " + server.volume)
+              .setDescription(`${names.slice(0,15).join('\n')}`)
               message.channel.send(embed);
+              
+    }
 
-            return;
-            } else {
+    async function repeatCMD(message, args) {
 
-            //Check if the Volume mentions is a number
-            if(isNaN(args[0])) return message.channel.send("❌ | Sorry. The volume specified is Not a Number.");
+      //Get the servers queue
+      let server = queue[message.guild.id];
 
-            //Check some things
-            if(args[0] > music.maxVolume) return message.channel.send("❌ | Sorry. The volume specified is bigger than the max queue size.");
-            if(args[0] < 1) return message.channel.send("❌ | Sorry. The volume specified is smaller than 1.");
+      //Check if there is a queue
+      if(server.queue[0] === null) return message.channel.send("⛔ | Sorry. There is nothing in the queue.");
 
-            //Get the dispatcher
-            let dispatcher = message.guild.me.voiceChannel.connection.player.dispatcher;
+      if(server.loop === false) {
 
-            //Set the volume
-            dispatcher.setVolume(parseInt(args[0] / 100));
+        //Enable the loop
+        server.loop=true
 
-            //Set volume in the server array
-            server.volume=args[0];
+        message.channel.send("🔂 | Success. Repeat is now **enabled**.");
 
-            //Send the confirmation
-            message.channel.send("⏫ | Success. I have turned the volume to " + server.volume + ".");
-            }
+      } else if(server.loop === true) {
 
+        //Disable
+        server.loop=false
 
-            
+        message.channel.send("🔁 | Success. Repeat is now **disabled**.");
 
       }
+    }
 
-    
+    async function volumeCMD(message, args) {
+
+          //Get the servers queue
+          let server = queue[message.guild.id];
+
+          if(!server.queue[0]) return message.channel.send("⛔ | Sorry. Nothing is playing at the moment.");
+
+          //Check if a volume is specified
+          if(!args[0]) return message.channel.send(`⛔ | Sorry. Please specify a volume between 1 - ${music.maxVolume} or use **${music.botPrefix}volume current** for the current volume.`);
+
+          let opt = args[0].toLowerCase();
+          if(opt === "current") {
+
+            let embed = new Discord.RichEmbed()
+            .setColor(music.embedColor)
+            .setTitle("Current Volume")
+            .setThumbnail(message.guild.iconURL)
+            .setDescription("**Current Volume**: " + server.volume)
+            message.channel.send(embed);
+
+          return;
+          } else {
+
+          //Check if the Volume mentions is a number
+          if(isNaN(args[0])) return message.channel.send("⛔ | Sorry. The volume specified is Not a Number.");
+
+          //Check some things
+          if(args[0] > music.maxVolume) return message.channel.send("⛔ | Sorry. The volume specified is bigger than the max queue size.");
+          if(args[0] < 1) return message.channel.send("⛔ | Sorry. The volume specified is smaller than 1.");
+
+          //Get the dispatcher
+          let dispatcher = message.guild.me.voiceChannel.connection.player.dispatcher;
+
+          //Set the volume
+          dispatcher.setVolume(args[0] / 100);
+
+          //Set volume in the server array
+          server.volume=args[0];
+
+          //Send the confirmation
+          message.channel.send("⏫ | Success. I have turned the volume to " + server.volume + ".");
+          }
+    }
+
 
 };
