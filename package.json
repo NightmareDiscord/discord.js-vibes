@@ -1,6 +1,6 @@
 {
   "name": "discord.js-vibes",
-  "version": "1.2.7",
+  "version": "1.2.9",
   "description": "A discord.js musicbot add-on",
   "main": "vibe.js",
   "scripts": {

@@ -156,6 +156,9 @@ exports.start = (bot, options) => {
         //End event
         server.dispatcher.on("end", async function() {
 
+            //If the bot isn't in a voice channel
+            if(!message.guild.me.voiceChannel) return;
+
             //If the repeat is disabled
             if(server.loop === false) {
 
