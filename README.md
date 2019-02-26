@@ -45,7 +45,7 @@ let bot = new Discord.Client();
 
 Music.start(bot, {
     youtubeAPIKey: 'YOUTUBE_API_KEY',
-    prefix: 'BOT_PREFIX', //Default if '!'
+    botPrefix: 'BOT_PREFIX', //Default if '!'
     embedColor: 'EMBED_COLOR', //Use a HTML color code
     maxVolume: 200, //Default 200 
     botLogging: true, //Set this to false if you don't want console logging.
