@@ -3,6 +3,7 @@ __Support server__
 [Discord Vibes](https://discord.gg/zf46prb)
 
 __Warning__
+
 If your having problems installing the module, install [node-gyp](https://www.npmjs.com/package/node-gyp) because the module now uses node-opus for better music quality that requires node-gyp to install.
 
 __Commands__
