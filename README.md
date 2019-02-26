@@ -2,9 +2,12 @@ __Support server__
 
 [Discord Vibes](https://discord.gg/zf46prb)
 
+__Warning__
+If your having problems installing the module, install [node-gyp](https://www.npmjs.com/package/node-gyp) because the module now uses node-opus for better music quality that requires node-gyp to install.
+
 __Commands__
 
-play {Search String} | Plays the song selected.
+play {Search String} or {Playlist link} | Plays the song selected.
 
 pause | Pauses the playing song.
 
